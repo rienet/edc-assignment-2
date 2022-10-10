@@ -255,38 +255,3 @@ class PetriNet {
         addTransition("t4", new Transition(IN_T4, OUT_T4, STATES_CHANGE_T4));
     }
 }
-
-
-// Graph class
-class Graph {
-    // node of adjacency list 
-    static class Node {
-        int dest;
-        String transition;
-        Node(int dest, String transition)  {
-            this.dest = dest;
-            this.transition = transition;
-        }
-    };
- 
-    // define adjacency list
-    List<List<Node>> adj_list = new ArrayList<>();
-
-    // keeps track of state of nfa
-    ArrayList<Character> state = new ArrayList<Character>();
-    ArrayList<Character> bufferState = new ArrayList<Character>();
- 
-    // Graph Constructor
-    public Graph()
-    {
-        // add start and end node
-        adj_list.add(new ArrayList<>());
-        adj_list.add(new ArrayList<>());
- 
-    }
-
-    // add a transition to a source node to destination node
-    public void addEdge(int src, int dest, String transition) {
-        adj_list.get(src).add(new Node(dest, transition));
-    }
-}
