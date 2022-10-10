@@ -1,203 +1,66 @@
+package src;
+
 import java.util.Scanner;
 import java.util.ArrayList;
-import java.util.HashMap; // import the HashMap class
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
-import java.lang.Character;
+import java.util.Arrays;
 
-public class RegexEngine {
+public class InterlockingImp1 implements Interlocking{
     static HashMap<Character, Character> operators = new HashMap<Character, Character>();
     static boolean first = true;
     static int opCount = 0;
+    List<Train> allTrains = new ArrayList<Train>();
+
+    // defines a train and related attributes that are part of a train
+    static class Train {
+        String name;
+        int entry;
+        int dest;
+        int currentSection;
+        Train(String name, int entry, int dest)  {
+            this.name = name;
+            this.entry = entry;
+            this.dest = dest;
+            this.currentSection = entry;
+        }
+    };
 
     // parses given regex and creates a e-nfa out of it
-    static Graph parseLine(String line) {
-        Graph epsilonNFA = new Graph();
-        for(int i = 0 ; i<line.length(); i++){
-            Character currentChar = line.charAt(i);
-
-            // handling operators
-            if(operators.containsValue(currentChar)){
-                //an operator cannot be the first character in a string
-                // except for brackets
-                if(first == true && currentChar != '('){
-                    // invalid input
-                    System.out.println("Invalid input detected, operator cannot be first"); 
-                    System.exit(1);
-                }
-
-                // handling kleene star
-                if(currentChar == '*'){
-                    // there cannot be an operator behind a kleene star
-                    Character previousChar = line.charAt(i-1);
-                    if(operators.containsValue(previousChar)){
-                        // invalid input
-                        System.out.println("Invalid input detected, invalid operator behind operator"); 
-                        System.exit(1);
-                    }
-
-                    boolean last = false;
-                    // check if next char is an operator, if so skip to process operator
-                    try{
-                        if(operators.containsValue(line.charAt(i+1))){
-                            //skip = true;
-                        }
-                    // must be last character if exception occured
-                    } catch(Exception e){
-                        // append onto latest node on block
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        // change for alternators later
-                        int size = epsilonNFA.adj_list.size();
-                        epsilonNFA.addEdge(size-3, size-2, "epsilon");
-                        epsilonNFA.addEdge(size-2, size-1, "epsilon");
-                        epsilonNFA.addEdge(size-2, size-2, Character.toString(previousChar));
-                        last = true;
-                    }
-
-                    if(!last){
-                        // append onto latest node on block
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        // change for alternators later
-                        int size = epsilonNFA.adj_list.size();
-                        epsilonNFA.addEdge(size-3, size-2, "epsilon");
-                        epsilonNFA.addEdge(size-2, size-2, Character.toString(previousChar));
-                    }
-
-                    //track and increment the number of operations so far
-                    opCount++;
-
-                // handling plus
-                } else if(currentChar == '+') {
-                    // there cannot be an operator behind a plus
-                    Character previousChar = line.charAt(i-1);
-                    if(operators.containsValue(previousChar)){
-                        // invalid input
-                        System.out.println("Invalid input detected, invalid operator behind operator"); 
-                        System.exit(1);
-                    }
-
-                    boolean last = false;
-                    // check if next char is an operator, if so skip to process operator
-                    try{
-                        if(operators.containsValue(line.charAt(i+1))){
-                            //skip = true;
-                        }
-                    // must be last character if exception occured
-                    } catch(Exception e){
-                        // append onto latest node on block
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        // change for alternators later
-                        int size = epsilonNFA.adj_list.size();
-                        epsilonNFA.addEdge(size-4, size-3, Character.toString(previousChar));
-                        epsilonNFA.addEdge(size-3, size-2, "epsilon");
-                        epsilonNFA.addEdge(size-2, size-1, "epsilon");
-                        epsilonNFA.addEdge(size-2, size-2, Character.toString(previousChar));
-                        last = true;
-                    }
-
-                    if(!last){
-                        // append onto latest node on block
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        // change for alternators later
-                        int size = epsilonNFA.adj_list.size();
-                        epsilonNFA.addEdge(size-4, size-3, Character.toString(previousChar));
-                        epsilonNFA.addEdge(size-3, size-2, "epsilon");
-                        epsilonNFA.addEdge(size-2, size-2, Character.toString(previousChar));
-                    }
-                }
-
-            // handling non-operators
-            } else if(Character.isLetter(currentChar) || Character.isDigit(currentChar) || 
-                      Character.isWhitespace(currentChar)){
-                        
-                boolean skip = false;
-                boolean last = false;
-                // check if next char is an operator, if so skip to process operator
-                try{
-                    if(operators.containsValue(line.charAt(i+1))){
-                        skip = true;
-                        first = false;
-                    }
-                // must be last character if exception occured
-                } catch(Exception e){
-                    epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                    int size = epsilonNFA.adj_list.size();
-
-                    // check aainst single letter regex
-                    if (line.length() > 1){
-                        Character previousChar = line.charAt(i-1);
-                        // operators fucks with add edges for some arcane reason idk
-                        if(previousChar == '*' || previousChar == '+'){
-                            String previousPreviousChar = Character.toString(line.charAt(i-2));
-                            epsilonNFA.addEdge(size-3, size-3, previousPreviousChar);
-                            epsilonNFA.deleteEdge(size-2, size-3, previousPreviousChar);
-                        }
-                    }
-                        
-                    epsilonNFA.addEdge(size-3, size-2, Character.toString(currentChar));
-                    epsilonNFA.addEdge(size-2, size-1, "epsilon");
-                    last = true;
-                }
-
-                if(!skip && !last){
-                    // handle first character in a block
-                    if (first){
-                        // append onto latest node on block
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        // change for alternators later
-                        int size = epsilonNFA.adj_list.size();
-                        epsilonNFA.addEdge(size-4, size-3, "epsilon");
-                        epsilonNFA.addEdge(size-3, size-2, Character.toString(currentChar));
-
-                        first = false;
-                    } else {
-                        Character previousChar = line.charAt(i-1);
-                        // append onto latest node on block
-
-                        epsilonNFA.addNode(epsilonNFA.adj_list.size()-2);
-                        int size = epsilonNFA.adj_list.size();
-
-                        // operators fucks with add edges for some arcane reason idk
-                        if(previousChar == '*' || previousChar == '+'){
-                            String previousPreviousChar = Character.toString(line.charAt(i-2));
-                            epsilonNFA.addEdge(size-3, size-3, previousPreviousChar);
-                            epsilonNFA.deleteEdge(size-2, size-3, previousPreviousChar);
-                        }
-                        
-                        epsilonNFA.addEdge(size-3, size-2, Character.toString(currentChar));
-                  
-                    }
-                }
-            } else {
-                // invalid input
-                System.out.println("Invalid input detected"); 
-                System.exit(1);
-            }
-        }
-        //epsilonNFA.printGraph(epsilonNFA);
-        return epsilonNFA;
+    static String parseLine(String line) {
+      
+        return line;
     }
 
     // evaluates given input on a line against e nfa
     static String evaluateInput(Graph epsilonNFA, String line) {
-        ArrayList<Character> baseState = epsilonNFA.initialiseBaseState(epsilonNFA);
-        
-        //System.out.print("Base state: ");
-        //System.out.println(baseState);
 
-        String eval = new String();
-        epsilonNFA.helperState(epsilonNFA, line);
-        if (epsilonNFA.state.get(epsilonNFA.state.size() - 1).equals('a')){
-            eval = "true";
-        } else{
-            eval = "false";
-        }
+        return line;
+    }
 
-        epsilonNFA.flushState();
-        return eval;
+    @Override
+    public void addTrain(String trainName, int entryTrackSection, int destinationTrackSection)
+            throws IllegalArgumentException, IllegalStateException {
+        // TODO Auto-generated method stub
+        allTrains.add(new Train(trainName, entryTrackSection, destinationTrackSection));
+    }
+
+    @Override
+    public int moveTrains(String[] trainNames) throws IllegalArgumentException {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public String getSection(int trackSection) throws IllegalArgumentException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public int getTrain(String trainName) throws IllegalArgumentException {
+        // TODO Auto-generated method stub
+        return 0;
     }
 
     public static void main(String[] args) {
@@ -207,35 +70,193 @@ public class RegexEngine {
         operators.put('+', '+');
         operators.put('*', '*');
 
-
-        Scanner myObj = new Scanner(System.in);
-        String regex = myObj.nextLine();
-        Graph stateDiagram = parseLine(regex);
-        if(args.length > 0){
-            stateDiagram.printTable(stateDiagram);
-        }
-
-        System.out.println("ready");
-        
-        while(true){
-            String input = myObj.nextLine();
-            String print = evaluateInput(stateDiagram, input);
-            System.out.println(print);
-        }
     }
 }
 
-// class that defines transition of states
-class Edge {
-    int src;
-    int dest;
-    String transition;
-    Edge(int src, int dest, String transition) {
-        this.src = src;
-        this.dest = dest;
-        this.transition = transition;
+// class representing a Petri net
+class PetriNet {
+    // represents a transition in a Petri net
+    static class Transition {
+        // in/out denotes a section of the railway
+        // (see create intersection methods for examples)
+        List<Integer> in = new ArrayList<>();
+        List<Integer> out = new ArrayList<>();
+        // represents additional states THAT CHANGES in a TRANSITION as shown in diagrams
+        HashMap<String, Integer> statesChange = new HashMap<String, Integer>();
+
+        Transition(List<Integer> in, List<Integer> out, 
+                   HashMap<String, Integer> statesChange) {
+            this.in = in;
+            this.out = out;
+            this.statesChange = statesChange;
+        }
+    };
+
+    // represents additional states in a Petri net as shown in diagrams
+    HashMap<String, Integer> states = new HashMap<String, Integer>();
+    
+    // a Petri Net is also made up of transitions
+    public HashMap<String, Transition> transitionList = new HashMap<String, Transition>();
+
+    // add a state to the petri net
+    public void addState(String newName, Integer newState) {
+        states.put(newName, newState);    
+    }
+
+    // add a transition to the petri net
+    public void addTransition(String newName, Transition newTransition) {
+        transitionList.put(newName, newTransition);    
+    }
+
+    // populate a petri net for intersection 1 for trains travellign north
+    public void createIntersection1North(){
+        // initialise extra states
+        states.put("empty", 1);
+        states.put("full", 0);
+        states.put("6 is not travelling", 0);
+
+        // initialise transition
+        ArrayList<Integer> IN_T1 = new ArrayList<>(Arrays.asList(0,0,0,0,0,1,0,0,0,0,0));
+        ArrayList<Integer> OUT_T1 = new ArrayList<>(Arrays.asList(0,1,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T1 = new HashMap<>();
+        addTransition("t1", new Transition(IN_T1, OUT_T1, STATES_CHANGE_T1));
+
+        ArrayList<Integer> IN_T2 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T2 = new ArrayList<>(Arrays.asList(0,0,1,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T2 = new HashMap<>();
+        STATES_CHANGE_T2.put("full", 0);
+        STATES_CHANGE_T2.put("empty", 1);
+        addTransition("t2", new Transition(IN_T2, OUT_T2, STATES_CHANGE_T2));
+
+        ArrayList<Integer> IN_T3 = new ArrayList<>(Arrays.asList(0,0,0,1,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T3 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T3 = new HashMap<>();
+        STATES_CHANGE_T3.put("6 is not travelling", 0);
+        STATES_CHANGE_T3.put("full", 1);
+        STATES_CHANGE_T3.put("empty", 0);
+        addTransition("t3", new Transition(IN_T3, OUT_T3, STATES_CHANGE_T3));
+
+        ArrayList<Integer> IN_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,1,0,0,0,0));
+        ArrayList<Integer> OUT_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T4 = new HashMap<>();
+        STATES_CHANGE_T4.put("full", 1);
+        STATES_CHANGE_T4.put("empty", 0);
+        addTransition("t4", new Transition(IN_T4, OUT_T4, STATES_CHANGE_T4));
+    }
+
+    // populate a petri net for intersection 1 for trains travellign south
+    public void createIntersection1South(){
+        // initialise extra states
+        states.put("empty", 1);
+        states.put("full", 0);
+        states.put("3 is travel to 7", 0);
+
+        // initialise transition
+        ArrayList<Integer> IN_T1 = new ArrayList<>(Arrays.asList(1,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T1 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T1 = new HashMap<>();
+        STATES_CHANGE_T1.put("full", 1);
+        STATES_CHANGE_T1.put("empty", 0);
+        addTransition("t1", new Transition(IN_T1, OUT_T1, STATES_CHANGE_T1));
+
+        ArrayList<Integer> IN_T2 = new ArrayList<>(Arrays.asList(0,0,1,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T2 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T2 = new HashMap<>();
+        STATES_CHANGE_T2.put("full", 1);
+        STATES_CHANGE_T2.put("empty", 0);
+        addTransition("t2", new Transition(IN_T2, OUT_T2, STATES_CHANGE_T2));
+
+        ArrayList<Integer> IN_T3 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T3 = new ArrayList<>(Arrays.asList(0,0,0,1,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T3 = new HashMap<>();
+        STATES_CHANGE_T3.put("full", 0);
+        STATES_CHANGE_T3.put("empty", 1);
+        addTransition("t3", new Transition(IN_T3, OUT_T3, STATES_CHANGE_T3));
+
+        ArrayList<Integer> IN_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,1,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T4 = new HashMap<>();
+        STATES_CHANGE_T4.put("full", 0);
+        STATES_CHANGE_T4.put("empty", 1);
+        addTransition("t4", new Transition(IN_T4, OUT_T4, STATES_CHANGE_T4));
+
+        ArrayList<Integer> IN_T5 = new ArrayList<>(Arrays.asList(0,0,1,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T5 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,1,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T5 = new HashMap<>();
+        STATES_CHANGE_T5.put("3 is travel to 7", 0);
+        addTransition("t5", new Transition(IN_T5, OUT_T5, STATES_CHANGE_T5));
+    }
+
+    // populate a petri net for intersection 2 for trains travellign north
+    public void createIntersection2North(){
+        // initialise extra states
+        states.put("empty", 1);
+        states.put("full", 0);
+
+        // initialise transition
+        ArrayList<Integer> IN_T1 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T1 = new ArrayList<>(Arrays.asList(0,0,0,0,0,1,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T1 = new HashMap<>();
+        STATES_CHANGE_T1.put("full", 0);
+        STATES_CHANGE_T1.put("empty", 1);
+        addTransition("t1", new Transition(IN_T1, OUT_T1, STATES_CHANGE_T1));
+
+        ArrayList<Integer> IN_T2 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,1,0,0));
+        ArrayList<Integer> OUT_T2 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T2 = new HashMap<>();
+        STATES_CHANGE_T2.put("full", 1);
+        STATES_CHANGE_T2.put("empty", 0);
+        addTransition("t2", new Transition(IN_T2, OUT_T2, STATES_CHANGE_T2));
+
+        ArrayList<Integer> IN_T3 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,1,0));
+        ArrayList<Integer> OUT_T3 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T3 = new HashMap<>();
+        STATES_CHANGE_T3.put("full", 1);
+        STATES_CHANGE_T3.put("empty", 0);
+        addTransition("t3", new Transition(IN_T3, OUT_T3, STATES_CHANGE_T3));
+
+        ArrayList<Integer> IN_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,1));
+        ArrayList<Integer> OUT_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,1,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T4 = new HashMap<>();
+        addTransition("t4", new Transition(IN_T4, OUT_T4, STATES_CHANGE_T4));
+    }
+
+    // populate a petri net for intersection 2 for trains travellign south
+    public void createIntersection2South(){
+        // initialise extra states
+        states.put("empty", 1);
+        states.put("full", 0);
+
+        // initialise transition
+        ArrayList<Integer> IN_T1 = new ArrayList<>(Arrays.asList(0,0,0,0,1,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T1 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T1 = new HashMap<>();
+        STATES_CHANGE_T1.put("full", 1);
+        STATES_CHANGE_T1.put("empty", 0);
+        addTransition("t1", new Transition(IN_T1, OUT_T1, STATES_CHANGE_T1));
+
+        ArrayList<Integer> IN_T2 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T2 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,1,0,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T2 = new HashMap<>();
+        STATES_CHANGE_T2.put("full", 0);
+        STATES_CHANGE_T2.put("empty", 1);
+        addTransition("t2", new Transition(IN_T2, OUT_T2, STATES_CHANGE_T2));
+
+        ArrayList<Integer> IN_T3 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
+        ArrayList<Integer> OUT_T3 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,1,0,0));
+        HashMap<String, Integer> STATES_CHANGE_T3 = new HashMap<>();
+        STATES_CHANGE_T3.put("full", 0);
+        STATES_CHANGE_T3.put("empty", 1);
+        addTransition("t3", new Transition(IN_T3, OUT_T3, STATES_CHANGE_T3));
+
+        ArrayList<Integer> IN_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,1,0,0,0,0));
+        ArrayList<Integer> OUT_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,1));
+        HashMap<String, Integer> STATES_CHANGE_T4 = new HashMap<>();
+        addTransition("t4", new Transition(IN_T4, OUT_T4, STATES_CHANGE_T4));
     }
 }
+
+
 // Graph class
 class Graph {
     // node of adjacency list 
@@ -268,3 +289,4 @@ class Graph {
     public void addEdge(int src, int dest, String transition) {
         adj_list.get(src).add(new Node(dest, transition));
     }
+}
