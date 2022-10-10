@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Arrays;
 
 public class InterlockingImp1 implements Interlocking{
-    static HashMap<Character, Character> operators = new HashMap<Character, Character>();
-    static boolean first = true;
-    static int opCount = 0;
+    static PetriNet inter1North = new PetriNet();
+    static PetriNet inter1South = new PetriNet();
+    static PetriNet inter2North = new PetriNet();
+    static PetriNet inter2South = new PetriNet();
     List<Train> allTrains = new ArrayList<Train>();
+    int[] section = new int[11];
 
     // defines a train and related attributes that are part of a train
     static class Train {
@@ -32,12 +34,6 @@ public class InterlockingImp1 implements Interlocking{
         return line;
     }
 
-    // evaluates given input on a line against e nfa
-    static String evaluateInput(Graph epsilonNFA, String line) {
-
-        return line;
-    }
-
     @Override
     public void addTrain(String trainName, int entryTrackSection, int destinationTrackSection)
             throws IllegalArgumentException, IllegalStateException {
@@ -53,7 +49,19 @@ public class InterlockingImp1 implements Interlocking{
 
     @Override
     public String getSection(int trackSection) throws IllegalArgumentException {
-        // TODO Auto-generated method stub
+        // checks for section that does not exist
+        if(trackSection < 1 || trackSection > 11){
+            throw new IllegalArgumentException();
+        }
+
+        String trainName;
+        for (Train temp : allTrains) {
+            if(temp.currentSection == trackSection){
+                trainName = temp.name;
+                return trainName;
+            }
+        }
+
         return null;
     }
 
@@ -64,12 +72,10 @@ public class InterlockingImp1 implements Interlocking{
     }
 
     public static void main(String[] args) {
-        operators.put('(', '(');
-        operators.put(')', ')');
-        operators.put('|', '|');
-        operators.put('+', '+');
-        operators.put('*', '*');
-
+        inter1North.createIntersection1North();
+        inter1South.createIntersection1South();
+        inter2North.createIntersection2North();
+        inter2South.createIntersection2South();
     }
 }
 
@@ -93,7 +99,7 @@ class PetriNet {
     };
 
     // represents additional states in a Petri net as shown in diagrams
-    HashMap<String, Integer> states = new HashMap<String, Integer>();
+    public HashMap<String, Integer> states = new HashMap<String, Integer>();
     
     // a Petri Net is also made up of transitions
     public HashMap<String, Transition> transitionList = new HashMap<String, Transition>();
