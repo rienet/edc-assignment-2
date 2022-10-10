@@ -13,6 +13,8 @@ public class InterlockingImp1 implements Interlocking{
     static PetriNet inter2South = new PetriNet();
     List<Train> allTrains = new ArrayList<Train>();
     int[] section = new int[11];
+    String directionLock;
+    int trainsInRailway = 0;
 
     // defines a train and related attributes that are part of a train
     static class Train {
@@ -28,17 +30,56 @@ public class InterlockingImp1 implements Interlocking{
         }
     };
 
-    // parses given regex and creates a e-nfa out of it
-    static String parseLine(String line) {
-      
-        return line;
-    }
-
     @Override
     public void addTrain(String trainName, int entryTrackSection, int destinationTrackSection)
             throws IllegalArgumentException, IllegalStateException {
-        // TODO Auto-generated method stub
+        // locks the direction of travel when a train enters the railway to prevent deadlocks
+        // only unlocks when railway is empty
+        if (trainsInRailway == 0){
+            if(destinationTrackSection == 2 || destinationTrackSection == 3){
+                directionLock = "north";
+            } else {
+                directionLock = "south";
+            }
+        }
+
+        // ensure southbound trains are entering and exiting from correct sections
+        if (entryTrackSection == 1 || entryTrackSection == 3){
+            if(destinationTrackSection != 4 && destinationTrackSection != 8 &&
+                destinationTrackSection != 9 && destinationTrackSection != 11){
+                throw new IllegalArgumentException("not a valid path southbound");
+            } else if (directionLock != "south"){
+                throw new IllegalArgumentException("cannot add southbound train when there are still northbound trains remaining");
+            }
+        }
+        // ensure northbound trains are entering and exiting from correct sections
+        else if (entryTrackSection == 4 || entryTrackSection == 9 ||
+            entryTrackSection == 10 || entryTrackSection == 11){
+            if(destinationTrackSection != 2 && destinationTrackSection != 3){
+                throw new IllegalArgumentException("not a valid path northbound");
+            } else if (directionLock != "north"){
+                throw new IllegalArgumentException("cannot add northbound train when there are still southbound trains remaining");
+            }
+        }
+        // train is not entering from correct sections
+        else {
+            throw new IllegalArgumentException("train is not entering from correct section");
+        }
+        // checks if train name already in use
+        for (Train temp : allTrains) {
+            if(temp.name == trainName){
+                throw new IllegalArgumentException("train name already in use");
+            }
+        }
+        // checks if railway section already in use
+        for (Train temp : allTrains) {
+            if(temp.currentSection == entryTrackSection){
+                throw new IllegalStateException("railway section already in use");
+            }
+        }
+        
         allTrains.add(new Train(trainName, entryTrackSection, destinationTrackSection));
+        trainsInRailway++;
     }
 
     @Override
@@ -51,7 +92,7 @@ public class InterlockingImp1 implements Interlocking{
     public String getSection(int trackSection) throws IllegalArgumentException {
         // checks for section that does not exist
         if(trackSection < 1 || trackSection > 11){
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("section does not exist");
         }
 
         String trainName;
@@ -61,14 +102,19 @@ public class InterlockingImp1 implements Interlocking{
                 return trainName;
             }
         }
-
         return null;
     }
 
     @Override
     public int getTrain(String trainName) throws IllegalArgumentException {
-        // TODO Auto-generated method stub
-        return 0;
+        for (Train temp : allTrains) {
+            if(temp.name == trainName){
+                return temp.currentSection;
+            }
+        }
+
+        // cannot find name in list of all train names
+        throw new IllegalArgumentException("train does not exist");
     }
 
     public static void main(String[] args) {
