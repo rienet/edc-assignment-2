@@ -58,7 +58,7 @@ public class InterlockingImp1 implements Interlocking{
                     throw new IllegalArgumentException("not a valid path southbound, interlocking dlines");
                 }
             } else if (entryTrackSection == 3){
-                if(destinationTrackSection == 4 || destinationTrackSection == 7){
+                if(destinationTrackSection == 4 || destinationTrackSection == 11){
                     
                 } else {
                     throw new IllegalArgumentException("not a valid path southbound, interlocking lines");
@@ -138,6 +138,7 @@ public class InterlockingImp1 implements Interlocking{
 
             // check if destination is empty, only move if so
             generateRoute(currentTrain);
+            System.out.println("train is: " + currentTrain.name + " iter: " + i + " route: " +currentTrain.route);
             if (section[currentTrain.route - 1 ] == 0){
                 // premptive set states for certain situations - see diagram
                 if(currentTrain.currentSection == 3 && currentTrain.route == 7){
@@ -153,14 +154,17 @@ public class InterlockingImp1 implements Interlocking{
                     // Intersection 1
                     if(currentTrain.currentSection == 1 || currentTrain.currentSection == 3){
                         if(currentTrain.currentSection == 1 && inter1South.states.get("empty") == 1){
+                            System.out.println("Invalid input detected, operator cannot be first"); 
                             bufferSection = takeTransition(bufferSection, "t1", "inter1south");
-                            bufferSection = takeTransition(bufferSection, "t3", "inter1south");
+                            bufferSection = takeTransition(bufferSection, "t4", "inter1south");
                         } else if (currentTrain.currentSection == 3) {
                             if(currentTrain.route == 7 && inter1South.states.get("3 is travel to 7") == 1){
                                 bufferSection = takeTransition(bufferSection, "t5", "inter1south");
                             } else if (inter1South.states.get("empty") == 1){
+                                System.out.println("detetc"); 
                                 bufferSection = takeTransition(bufferSection, "t2", "inter1south");
-                                bufferSection = takeTransition(bufferSection, "t4", "inter1south");
+                                bufferSection = takeTransition(bufferSection, "t3", "inter1south");
+                                System.out.println(inter1South.states.get("empty")); 
                             }
                         }
                     // intersection 2
@@ -182,24 +186,26 @@ public class InterlockingImp1 implements Interlocking{
                     if(currentTrain.currentSection == 6 || currentTrain.currentSection == 4 ||
                         currentTrain.currentSection == 7){
                         if(currentTrain.currentSection == 6){
+                            System.out.println("why");
                             bufferSection = takeTransition(bufferSection, "t1", "inter1north");
-                        } else if (currentTrain.currentSection == 4 || inter2South.states.get("empty") == 1
-                            || inter1North.states.get("6 is not travelling") == 1 ) {
+                        } else if (currentTrain.currentSection == 4 && inter1North.states.get("empty") == 1
+                            && inter1North.states.get("6 is not travelling") == 1 ) {
                             bufferSection = takeTransition(bufferSection, "t3", "inter1north");
                             bufferSection = takeTransition(bufferSection, "t2", "inter1north");
-                        } else if (currentTrain.currentSection == 7 || inter2South.states.get("empty") == 1){
+                        } else if (currentTrain.currentSection == 7 && inter1North.states.get("empty") == 1){
+                            System.out.println("huh"); 
                             bufferSection = takeTransition(bufferSection, "t4", "inter1north");
                             bufferSection = takeTransition(bufferSection, "t2", "inter1north");
                         }
                     // intersection 2
                     } else {
-                        if(currentTrain.currentSection == 9 || inter2South.states.get("empty") == 1){
+                        if(currentTrain.currentSection == 9 && inter2North.states.get("empty") == 1){
                             bufferSection = takeTransition(bufferSection, "t2", "inter2north");
                             bufferSection = takeTransition(bufferSection, "t1", "inter2north");
-                        } else if (currentTrain.currentSection == 10 || inter2South.states.get("empty") == 1) {
+                        } else if (currentTrain.currentSection == 10 && inter2North.states.get("empty") == 1) {
                             bufferSection = takeTransition(bufferSection, "t3", "inter2north");
                             bufferSection = takeTransition(bufferSection, "t1", "inter2north");
-                        } else if (currentTrain.currentSection == 11 || inter2South.states.get("empty") == 1){
+                        } else if (currentTrain.currentSection == 11){
                             bufferSection = takeTransition(bufferSection, "t4", "inter2north");
                         }
                     }
@@ -207,7 +213,9 @@ public class InterlockingImp1 implements Interlocking{
             }
             // track changes from original section
             int[] tracker= new int[11];
+            System.out.println("iter" + i);
             for(int j = 0; j<finalChanges.length; j++){
+                System.out.print(bufferSection[j]); 
                 if(bufferSection[j] != section[j]){
                     tracker[j] = 1;
 
@@ -219,13 +227,16 @@ public class InterlockingImp1 implements Interlocking{
                 }
             }
 
+            System.out.println(); 
+
             // add change to final change
             for(int j = 0; j<finalChanges.length; j++){
                 if(tracker[j] == 1){
                     finalChanges[j] = bufferSection[j];
                 }
-            }   
+            }
         }
+        section = finalChanges;
 
         return trainIsMoved;
     }
@@ -269,6 +280,7 @@ public class InterlockingImp1 implements Interlocking{
     }
 
     public void generateRoute(Train currentTrain) {
+        System.out.println("hi "+ currentTrain.name + currentTrain.dest + currentTrain.entry);
         // southbound
         if (currentTrain.entry < currentTrain.dest){
             // start of transit - intersection 1
@@ -302,6 +314,8 @@ public class InterlockingImp1 implements Interlocking{
                     currentTrain.route = 6;
                 } else if(currentTrain.currentSection == 11){
                     currentTrain.route = 7;
+                } else if(currentTrain.currentSection == 4){
+                    currentTrain.route = 3;
                 }
             // middle of transit
             } else {
@@ -346,9 +360,12 @@ public class InterlockingImp1 implements Interlocking{
 
     public static void main(String[] args) {
         InterlockingImp1 interlocking = new InterlockingImp1();
-        interlocking.addTrain("train", 1, 8);
-        String[] stringArray = {"train"};
+        interlocking.addTrain("train", 4, 3);
+        interlocking.addTrain("train2", 10, 2);
+        String[] stringArray = {"train2"};
+        String[] stringArray2 = {"train", "train2"};
         interlocking.moveTrains(stringArray);
+        interlocking.moveTrains(stringArray2);
     }
 }
 
@@ -404,7 +421,7 @@ class PetriNet {
         ArrayList<Integer> OUT_T2 = new ArrayList<>(Arrays.asList(0,0,1,0,0,0,0,0,0,0,0));
         HashMap<String, Integer> STATES_CHANGE_T2 = new HashMap<>();
         STATES_CHANGE_T2.put("full", 0);
-        STATES_CHANGE_T2.put("empty", 1);
+        //STATES_CHANGE_T2.put("empty", 1);
         addTransition("t2", new Transition(IN_T2, OUT_T2, STATES_CHANGE_T2));
 
         ArrayList<Integer> IN_T3 = new ArrayList<>(Arrays.asList(0,0,0,1,0,0,0,0,0,0,0));
@@ -449,14 +466,14 @@ class PetriNet {
         ArrayList<Integer> OUT_T3 = new ArrayList<>(Arrays.asList(0,0,0,1,0,0,0,0,0,0,0));
         HashMap<String, Integer> STATES_CHANGE_T3 = new HashMap<>();
         STATES_CHANGE_T3.put("full", 0);
-        STATES_CHANGE_T3.put("empty", 1);
+        //STATES_CHANGE_T3.put("empty", 1);
         addTransition("t3", new Transition(IN_T3, OUT_T3, STATES_CHANGE_T3));
 
         ArrayList<Integer> IN_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,0,0,0,0,0,0,0));
         ArrayList<Integer> OUT_T4 = new ArrayList<>(Arrays.asList(0,0,0,0,1,0,0,0,0,0,0));
         HashMap<String, Integer> STATES_CHANGE_T4 = new HashMap<>();
         STATES_CHANGE_T4.put("full", 0);
-        STATES_CHANGE_T4.put("empty", 1);
+        //STATES_CHANGE_T4.put("empty", 1);
         addTransition("t4", new Transition(IN_T4, OUT_T4, STATES_CHANGE_T4));
 
         ArrayList<Integer> IN_T5 = new ArrayList<>(Arrays.asList(0,0,1,0,0,0,0,0,0,0,0));
