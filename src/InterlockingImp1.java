@@ -1,6 +1,5 @@
 package src;
 
-import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +10,7 @@ public class InterlockingImp1 implements Interlocking{
     static PetriNet inter1South = new PetriNet();
     static PetriNet inter2North = new PetriNet();
     static PetriNet inter2South = new PetriNet();
+    
     List<Train> allTrains = new ArrayList<Train>();
     int[] section = new int[11];
     String directionLock;
@@ -21,6 +21,7 @@ public class InterlockingImp1 implements Interlocking{
         String name;
         int entry;
         int dest;
+        int route;
         int currentSection;
         Train(String name, int entry, int dest)  {
             this.name = name;
@@ -104,13 +105,129 @@ public class InterlockingImp1 implements Interlocking{
         }
         
         allTrains.add(new Train(trainName, entryTrackSection, destinationTrackSection));
+        section[entryTrackSection-1] = 1;
         trainsInRailway++;
     }
 
     @Override
     public int moveTrains(String[] trainNames) throws IllegalArgumentException {
-        // TODO Auto-generated method stub
-        return 0;
+        // check if train is still in corrridor or if it exists
+        for(int i = 0; i<trainNames.length; i++){
+            if(getTrain(trainNames[i]) == -1){
+                throw new IllegalArgumentException("cannot move a train, is out of corridor");
+            }
+        }
+        
+        inter1North.createIntersection1North();
+        inter1South.createIntersection1South();
+        inter2North.createIntersection2North();
+        inter2South.createIntersection2South();
+        int[] finalChanges = section.clone();
+        int trainIsMoved = 0;
+        
+        for(int i = 0; i<trainNames.length; i++){
+            int[] bufferSection = section.clone();
+            Train currentTrain = trainObject(trainNames[i]);
+
+            // if train has reached end destination, remove off railway
+            if(currentTrain.currentSection == currentTrain.dest){
+                trainsInRailway--;
+                bufferSection[currentTrain.currentSection-1] = 0;
+                currentTrain.currentSection = -1;
+            }
+
+            // check if destination is empty, only move if so
+            generateRoute(currentTrain);
+            if (section[currentTrain.route - 1 ] == 0){
+                // premptive set states for certain situations - see diagram
+                if(currentTrain.currentSection == 3 && currentTrain.route == 7){
+                    inter1South.states.replace("3 is travel to 7", 1);
+                }
+                if(section[5] == 0){
+                    inter1North.states.replace("6 is not travelling", 1);
+                }
+
+                // move trains using states and transitions
+                // southbound
+                if (currentTrain.currentSection < currentTrain.route) {
+                    // Intersection 1
+                    if(currentTrain.currentSection == 1 || currentTrain.currentSection == 3){
+                        if(currentTrain.currentSection == 1 && inter1South.states.get("empty") == 1){
+                            bufferSection = takeTransition(bufferSection, "t1", "inter1south");
+                            bufferSection = takeTransition(bufferSection, "t3", "inter1south");
+                        } else if (currentTrain.currentSection == 3) {
+                            if(currentTrain.route == 7 && inter1South.states.get("3 is travel to 7") == 1){
+                                bufferSection = takeTransition(bufferSection, "t5", "inter1south");
+                            } else if (inter1South.states.get("empty") == 1){
+                                bufferSection = takeTransition(bufferSection, "t2", "inter1south");
+                                bufferSection = takeTransition(bufferSection, "t4", "inter1south");
+                            }
+                        }
+                    // intersection 2
+                    } else {
+                        if(currentTrain.currentSection == 5 && inter2South.states.get("empty") == 1){
+                            bufferSection = takeTransition(bufferSection, "t1", "inter2south");
+                            if(currentTrain.route == 8) {
+                                bufferSection = takeTransition(bufferSection, "t2", "inter2south");
+                            } else {
+                                bufferSection = takeTransition(bufferSection, "t3", "inter2south");
+                            }
+                        } else if (currentTrain.currentSection == 7) {
+                            bufferSection = takeTransition(bufferSection, "t4", "inter2south");
+                        }
+                    }
+                // northbound
+                } else {
+                    // Intersection 1
+                    if(currentTrain.currentSection == 6 || currentTrain.currentSection == 4 ||
+                        currentTrain.currentSection == 7){
+                        if(currentTrain.currentSection == 6){
+                            bufferSection = takeTransition(bufferSection, "t1", "inter1north");
+                        } else if (currentTrain.currentSection == 4 || inter2South.states.get("empty") == 1
+                            || inter1North.states.get("6 is not travelling") == 1 ) {
+                            bufferSection = takeTransition(bufferSection, "t3", "inter1north");
+                            bufferSection = takeTransition(bufferSection, "t2", "inter1north");
+                        } else if (currentTrain.currentSection == 7 || inter2South.states.get("empty") == 1){
+                            bufferSection = takeTransition(bufferSection, "t4", "inter1north");
+                            bufferSection = takeTransition(bufferSection, "t2", "inter1north");
+                        }
+                    // intersection 2
+                    } else {
+                        if(currentTrain.currentSection == 9 || inter2South.states.get("empty") == 1){
+                            bufferSection = takeTransition(bufferSection, "t2", "inter2north");
+                            bufferSection = takeTransition(bufferSection, "t1", "inter2north");
+                        } else if (currentTrain.currentSection == 10 || inter2South.states.get("empty") == 1) {
+                            bufferSection = takeTransition(bufferSection, "t3", "inter2north");
+                            bufferSection = takeTransition(bufferSection, "t1", "inter2north");
+                        } else if (currentTrain.currentSection == 11 || inter2South.states.get("empty") == 1){
+                            bufferSection = takeTransition(bufferSection, "t4", "inter2north");
+                        }
+                    }
+                }
+            }
+            // track changes from original section
+            int[] tracker= new int[11];
+            for(int j = 0; j<finalChanges.length; j++){
+                if(bufferSection[j] != section[j]){
+                    tracker[j] = 1;
+
+                    // update currenttrain location
+                    if(bufferSection[j] == 1){
+                        currentTrain.currentSection = j+1;
+                        trainIsMoved += 1;
+                    }
+                }
+            }
+
+            // add change to final change
+            for(int j = 0; j<finalChanges.length; j++){
+                if(tracker[j] == 1){
+                    finalChanges[j] = bufferSection[j];
+                }
+            }   
+        }
+
+        return trainIsMoved;
     }
 
     @Override
@@ -142,18 +259,103 @@ public class InterlockingImp1 implements Interlocking{
         throw new IllegalArgumentException("train does not exist");
     }
 
+    public Train trainObject(String trainName) {
+        for (Train temp : allTrains) {
+            if(temp.name == trainName){
+                return temp;
+            }
+        }
+        return null;
+    }
+
+    public void generateRoute(Train currentTrain) {
+        // southbound
+        if (currentTrain.entry < currentTrain.dest){
+            // start of transit - intersection 1
+            if(currentTrain.entry == currentTrain.currentSection){
+                if(currentTrain.currentSection == 1){
+                    currentTrain.route = 5;
+                } else if(currentTrain.currentSection == 3){
+                    if(currentTrain.dest == 4){
+                        currentTrain.route = 4;
+                    } else{
+                        currentTrain.route = 7;
+                    }
+                }
+            // middle of transit
+            } else {
+                if(currentTrain.currentSection == 5){
+                    if(currentTrain.dest == 8){
+                        currentTrain.route = 8;
+                    } else{
+                        currentTrain.route = 9;
+                    }
+                } else if(currentTrain.currentSection == 7){
+                    currentTrain.route = 11;
+                }
+            }
+        // northbound
+        } else {
+             // start of transit - intersection 2
+             if(currentTrain.entry == currentTrain.currentSection){
+                if(currentTrain.currentSection == 9 || currentTrain.currentSection == 10){
+                    currentTrain.route = 6;
+                } else if(currentTrain.currentSection == 11){
+                    currentTrain.route = 7;
+                }
+            // middle of transit
+            } else {
+                if(currentTrain.currentSection == 4 || currentTrain.currentSection == 7){
+                    currentTrain.route = 3;
+                } else if(currentTrain.currentSection == 6){
+                    currentTrain.route = 2;
+                }
+            }
+        }
+    }
+
+    public int[] takeTransition(int[] bufferSection, String gate, String petriNet){
+        if(petriNet == "inter1south"){
+            for(int x = 0; x<11; x++){
+                bufferSection[x] -= inter1South.transitionList.get(gate).in.get(x);
+                bufferSection[x] += inter1South.transitionList.get(gate).out.get(x);
+            }
+            inter1South.transitionList.get(gate).statesChange.forEach((k,v) -> inter1South.states.replace(k,v));    
+        } else if(petriNet == "inter2south"){
+            for(int x = 0; x<11; x++){
+                bufferSection[x] -= inter2South.transitionList.get(gate).in.get(x);
+                bufferSection[x] += inter2South.transitionList.get(gate).out.get(x);
+            }
+            inter2South.transitionList.get(gate).statesChange.forEach((k,v) -> inter2South.states.replace(k,v));    
+        } else if(petriNet == "inter1north"){
+            for(int x = 0; x<11; x++){
+                bufferSection[x] -= inter1North.transitionList.get(gate).in.get(x);
+                bufferSection[x] += inter1North.transitionList.get(gate).out.get(x);
+            }
+            inter1North.transitionList.get(gate).statesChange.forEach((k,v) -> inter1North.states.replace(k,v));    
+        } else if(petriNet == "inter2north"){
+            for(int x = 0; x<11; x++){
+                bufferSection[x] -= inter2North.transitionList.get(gate).in.get(x);
+                bufferSection[x] += inter2North.transitionList.get(gate).out.get(x);
+            }
+            inter2North.transitionList.get(gate).statesChange.forEach((k,v) -> inter2North.states.replace(k,v));    
+        }
+
+        return bufferSection;
+    }
+
     public static void main(String[] args) {
-        inter1North.createIntersection1North();
-        inter1South.createIntersection1South();
-        inter2North.createIntersection2North();
-        inter2South.createIntersection2South();
+        InterlockingImp1 interlocking = new InterlockingImp1();
+        interlocking.addTrain("train", 1, 8);
+        String[] stringArray = {"train"};
+        interlocking.moveTrains(stringArray);
     }
 }
 
 // class representing a Petri net
 class PetriNet {
     // represents a transition in a Petri net
-    static class Transition {
+    class Transition {
         // in/out denotes a section of the railway
         // (see create intersection methods for examples)
         List<Integer> in = new ArrayList<>();
