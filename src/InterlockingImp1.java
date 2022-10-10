@@ -47,24 +47,49 @@ public class InterlockingImp1 implements Interlocking{
         if (entryTrackSection == 1 || entryTrackSection == 3){
             if(destinationTrackSection != 4 && destinationTrackSection != 8 &&
                 destinationTrackSection != 9 && destinationTrackSection != 11){
-                throw new IllegalArgumentException("not a valid path southbound");
+                throw new IllegalArgumentException("not a valid destination southbound");
             } else if (directionLock != "south"){
                 throw new IllegalArgumentException("cannot add southbound train when there are still northbound trains remaining");
+            } else if (entryTrackSection == 1){
+                if(destinationTrackSection == 8 || destinationTrackSection == 9){
+                    
+                } else {
+                    throw new IllegalArgumentException("not a valid path southbound, interlocking dlines");
+                }
+            } else if (entryTrackSection == 3){
+                if(destinationTrackSection == 4 || destinationTrackSection == 7){
+                    
+                } else {
+                    throw new IllegalArgumentException("not a valid path southbound, interlocking lines");
+                }
             }
         }
         // ensure northbound trains are entering and exiting from correct sections
         else if (entryTrackSection == 4 || entryTrackSection == 9 ||
             entryTrackSection == 10 || entryTrackSection == 11){
             if(destinationTrackSection != 2 && destinationTrackSection != 3){
-                throw new IllegalArgumentException("not a valid path northbound");
+                throw new IllegalArgumentException("not a valid destination northbound");
             } else if (directionLock != "north"){
                 throw new IllegalArgumentException("cannot add northbound train when there are still southbound trains remaining");
+            } else if (destinationTrackSection == 2){
+                if(entryTrackSection == 9 || entryTrackSection == 10){
+    
+                } else {
+                    throw new IllegalArgumentException("not a valid path northbound, interlocking lines");
+                }
+            } else if (destinationTrackSection == 3){
+                if(entryTrackSection == 4 || entryTrackSection == 11){
+                    
+                } else {
+                    throw new IllegalArgumentException("not a valid path northbound, interlocking lines");
+                }
             }
         }
         // train is not entering from correct sections
         else {
             throw new IllegalArgumentException("train is not entering from correct section");
         }
+
         // checks if train name already in use
         for (Train temp : allTrains) {
             if(temp.name == trainName){
